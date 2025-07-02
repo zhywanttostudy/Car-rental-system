@@ -1,4 +1,4 @@
-//»¹³µ¹¦ÄÜ
+//è¿˜è½¦åŠŸèƒ½
 package service;
 
 import javax.swing.*;
@@ -35,12 +35,12 @@ public class VehicleReturnService {
             conn = Connect.getConnection();
             conn.setAutoCommit(false);
 
-            // 1. ÑéÖ¤ÈÕÆÚ¸ñÊ½
+            // 1. éªŒè¯æ—¥æœŸæ ¼å¼
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
             sdf.setLenient(false);
             Date returnDate = sdf.parse(returnDateStr);
 
-            // 2. ²éÑ¯¶©µ¥ĞÅÏ¢
+            // 2. æŸ¥è¯¢è®¢å•ä¿¡æ¯
             String sql = "SELECT Ostart, Oreturn, Ofee, Vprice, Ostatus " +
                     "FROM orders o JOIN vehicle v ON o.Vno = v.Vno " +
                     "WHERE Ono = ?";
@@ -49,8 +49,8 @@ public class VehicleReturnService {
             rs = pstmt1.executeQuery();
 
             if (!rs.next()) {
-                JOptionPane.showMessageDialog(parentFrame, "¶©µ¥²»´æÔÚ£¬¶©µ¥ºÅ£º" + orderNo,
-                        "´íÎó", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(parentFrame, "è®¢å•ä¸å­˜åœ¨ï¼Œè®¢å•å·ï¼š" + orderNo,
+                        "é”™è¯¯", JOptionPane.ERROR_MESSAGE);
                 return false;
             }
 
@@ -58,24 +58,24 @@ public class VehicleReturnService {
             Date originalReturnDate = rs.getDate("Oreturn");
             double originalFee = rs.getDouble("Ofee");
             double price = rs.getDouble("Vprice");
-            String status = rs.getString("Ostatus").trim(); // È¥³ı¿Õ¸ñ
+            String status = rs.getString("Ostatus").trim(); // å»é™¤ç©ºæ ¼
 
-            // 3. ¼ì²é¶©µ¥×´Ì¬ÊÇ·ñÎª½øĞĞÖĞ
+            // 3. æ£€æŸ¥è®¢å•çŠ¶æ€æ˜¯å¦ä¸ºè¿›è¡Œä¸­
             if (!OrderStatus.IN_PROGRESS.equals(status)) {
-                JOptionPane.showMessageDialog(parentFrame, "¶©µ¥×´Ì¬²»ÊÇ½øĞĞÖĞ£¬ÎŞ·¨Íê³É»¹³µ",
-                        "´íÎó", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(parentFrame, "è®¢å•çŠ¶æ€ä¸æ˜¯è¿›è¡Œä¸­ï¼Œæ— æ³•å®Œæˆè¿˜è½¦",
+                        "é”™è¯¯", JOptionPane.ERROR_MESSAGE);
                 return false;
             }
 
-            // 4. ¼ì²é»¹³µÈÕÆÚÊÇ·ñÔÚ¿ªÊ¼ÈÕÆÚÖ®ºó
+            // 4. æ£€æŸ¥è¿˜è½¦æ—¥æœŸæ˜¯å¦åœ¨å¼€å§‹æ—¥æœŸä¹‹å
             if (returnDate.before(startDate)) {
-                JOptionPane.showMessageDialog(parentFrame, "»¹³µÈÕÆÚ²»ÄÜÔçÓÚ×â³µ¿ªÊ¼ÈÕÆÚ",
-                        "´íÎó", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(parentFrame, "è¿˜è½¦æ—¥æœŸä¸èƒ½æ—©äºç§Ÿè½¦å¼€å§‹æ—¥æœŸ",
+                        "é”™è¯¯", JOptionPane.ERROR_MESSAGE);
                 return false;
             }
 
             double newFee = originalFee;
-            // 5. Èç¹û»¹³µÈÕÆÚ³¬¹ıÔ­Ô¤¼ÆÈÕÆÚ£¬¼ÆËã¶îÍâ·ÑÓÃ
+            // 5. å¦‚æœè¿˜è½¦æ—¥æœŸè¶…è¿‡åŸé¢„è®¡æ—¥æœŸï¼Œè®¡ç®—é¢å¤–è´¹ç”¨
             if (returnDate.after(originalReturnDate)) {
                 long diffInMillis = returnDate.getTime() - originalReturnDate.getTime();
                 int extraDays = (int) (diffInMillis / (1000 * 60 * 60 * 24));
@@ -83,7 +83,7 @@ public class VehicleReturnService {
                 double extraFee = price * extraDays;
                 newFee = originalFee + extraFee;
 
-                // ¸üĞÂ¶©µ¥·ÑÓÃ
+                // æ›´æ–°è®¢å•è´¹ç”¨
                 String updateFeeSql = "UPDATE orders SET Oreturn = ?, Ofee = ? WHERE Ono = ?";
                 pstmt2 = conn.prepareStatement(updateFeeSql);
                 pstmt2.setDate(1, new java.sql.Date(returnDate.getTime()));
@@ -92,45 +92,45 @@ public class VehicleReturnService {
                 pstmt2.executeUpdate();
             }
 
-            // 6. ¸üĞÂ¶©µ¥×´Ì¬Îª´ıÖ§¸¶
+            // 6. æ›´æ–°è®¢å•çŠ¶æ€ä¸ºå¾…æ”¯ä»˜
             String updateOrderSql = "UPDATE orders SET Ostatus = ? WHERE Ono = ?";
             pstmt3 = conn.prepareStatement(updateOrderSql);
             pstmt3.setString(1, OrderStatus.PENDING_PAYMENT);
             pstmt3.setString(2, orderNo);
             pstmt3.executeUpdate();
 
-            // 7. ¸üĞÂ³µÁ¾×´Ì¬Îª¿É³ö×â
-            String updateVehicleSql = "UPDATE vehicle SET Vstatus = '¿É³ö×â' WHERE Vno = ?";
+            // 7. æ›´æ–°è½¦è¾†çŠ¶æ€ä¸ºå¯å‡ºç§Ÿ
+            String updateVehicleSql = "UPDATE vehicle SET Vstatus = 'å¾…ç§Ÿ' WHERE Vno = ?";
             pstmt3 = conn.prepareStatement(updateVehicleSql);
             pstmt3.setString(1, vehicleNo);
             pstmt3.executeUpdate();
 
             conn.commit();
-            System.out.println("»¹³µ³É¹¦£¬¶©µ¥ºÅ£º" + orderNo);
+            System.out.println("è¿˜è½¦æˆåŠŸï¼Œè®¢å•å·ï¼š" + orderNo);
             JOptionPane.showMessageDialog(parentFrame, 
-                    "»¹³µ³É¹¦£¬¶©µ¥ºÅ£º" + orderNo + 
-                    "\nÔ­·ÑÓÃ£º" + originalFee + "Ôª" +
-                    "\nÊµ¼Ê·ÑÓÃ£º" + newFee + "Ôª" +
-                    "\nÇë¼°Ê±Ö§¸¶¡£",  
-                    "»¹³µ³É¹¦", JOptionPane.INFORMATION_MESSAGE);
+                    "è¿˜è½¦æˆåŠŸï¼Œè®¢å•å·ï¼š" + orderNo + 
+                    "\nåŸè´¹ç”¨ï¼š" + originalFee + "å…ƒ" +
+                    "\nå®é™…è´¹ç”¨ï¼š" + newFee + "å…ƒ" +
+                    "\nè¯·åŠæ—¶æ”¯ä»˜ã€‚",  
+                    "è¿˜è½¦æˆåŠŸ", JOptionPane.INFORMATION_MESSAGE);
             return true;
         } catch (ParseException e) {
-            JOptionPane.showMessageDialog(parentFrame, "ÈÕÆÚ¸ñÊ½²»ÕıÈ·£¬ÇëÊ¹ÓÃYYYY-MM-DD¸ñÊ½£¬ÀıÈç£º2025-06-24",
-                    "´íÎó", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(parentFrame, "æ—¥æœŸæ ¼å¼ä¸æ­£ç¡®ï¼Œè¯·ä½¿ç”¨YYYY-MM-DDæ ¼å¼ï¼Œä¾‹å¦‚ï¼š2025-06-24",
+                    "é”™è¯¯", JOptionPane.ERROR_MESSAGE);
             return false;
         } catch (Exception e) {
             e.printStackTrace();
             try {
                 if (conn != null) {
                     conn.rollback();
-                    System.err.println("»Ø¹ö»¹³µÊ§°Ü£¬¶©µ¥Î´ĞŞ¸Ä");
+                    System.err.println("å›æ»šè¿˜è½¦å¤±è´¥ï¼Œè®¢å•æœªä¿®æ”¹");
                 }
             } catch (SQLException ex) {
                 ex.printStackTrace();
-                System.err.println("»Ø¹öÊ§°Ü¡£");
+                System.err.println("å›æ»šå¤±è´¥ã€‚");
             }
-            JOptionPane.showMessageDialog(parentFrame, "»¹³µÊ§°Ü£º" + e.getMessage(),
-                    "´íÎó", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(parentFrame, "è¿˜è½¦å¤±è´¥ï¼š" + e.getMessage(),
+                    "é”™è¯¯", JOptionPane.ERROR_MESSAGE);
             return false;
         } finally {
             DBUtil.close(rs);
