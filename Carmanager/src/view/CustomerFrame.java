@@ -11,13 +11,13 @@ import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-
+import service.OrderPaymentService;
+import service.OrderRentalService;
+import service.VehicleReturnService;
+import service.VehicleRentalService;
 import entity.Customer;
 import basis.Connect;
 import basis.DBUtil;
-import service.OrderPaymentService;
-import service.VehicleReturnService;
-import service.VehicleRentalService;
 
 public class CustomerFrame extends JFrame {
     private Customer customer;
@@ -27,6 +27,7 @@ public class CustomerFrame extends JFrame {
     private VehicleRentalService rentalService;
     private OrderPaymentService paymentService;
     private VehicleReturnService returnService;
+    private OrderRentalService orderRentalService; // 订单租借服务
 
     // 所有车辆表格
     private JTable allVehicleTable;
@@ -39,9 +40,18 @@ public class CustomerFrame extends JFrame {
     // 我的订单表格
     private JTable orderTable;
     private JButton refreshOrderBtn, returnVehicleBtn, payOrderBtn;
+    private JButton rentOrderBtn; // 租借订单按钮
 
     // 查询面板
     private VehicleQueryPanel queryPanel;
+
+    // 修改信息按钮
+    private JButton modifyInfoBtn;
+
+    // 预约相关按钮
+    private JButton reserveAllBtn;
+    private JButton reserveAvailableBtn;
+    private JButton cancelReserveBtn;
 
     public CustomerFrame(Customer customer) {
         this.customer = customer;
@@ -57,6 +67,7 @@ public class CustomerFrame extends JFrame {
             rentalService = new VehicleRentalService(this, connection);
             paymentService = new OrderPaymentService(this, connection);
             returnService = new VehicleReturnService(this, connection);
+            orderRentalService = new OrderRentalService(this, connection); // 初始化订单租借服务
         } catch (SQLException | ClassNotFoundException e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(this,
@@ -93,6 +104,13 @@ public class CustomerFrame extends JFrame {
         refreshOrderBtn = new JButton("刷新订单列表");
         returnVehicleBtn = new JButton("归还");
         payOrderBtn = new JButton("支付订单");
+        modifyInfoBtn = new JButton("修改个人信息");
+        rentOrderBtn = new JButton("租赁"); // 初始化租借按钮
+
+        // 初始化预约相关按钮
+        reserveAllBtn = new JButton("预约");
+        reserveAvailableBtn = new JButton("预约");
+        cancelReserveBtn = new JButton("取消预约");
 
         // 为按钮添加图标
         service.IconUtils.addIconToButton(refreshAllBtn, "/view/刷新.png");
@@ -102,6 +120,11 @@ public class CustomerFrame extends JFrame {
         service.IconUtils.addIconToButton(refreshOrderBtn, "/view/刷新.png");
         service.IconUtils.addIconToButton(returnVehicleBtn, "/view/还车.png");
         service.IconUtils.addIconToButton(payOrderBtn, "/view/支付.png");
+        service.IconUtils.addIconToButton(modifyInfoBtn, "/view/修改.png");
+        service.IconUtils.addIconToButton(reserveAllBtn, "/view/预约.png");
+        service.IconUtils.addIconToButton(reserveAvailableBtn, "/view/预约.png");
+        service.IconUtils.addIconToButton(cancelReserveBtn, "/view/取消预约.png");
+        service.IconUtils.addIconToButton(rentOrderBtn, "/view/租赁.png"); // 为租借按钮添加图标
 
         // 初始化查询面板
         queryPanel = new VehicleQueryPanel(queryUtil, allVehicleTable, connection);
@@ -131,6 +154,7 @@ public class CustomerFrame extends JFrame {
         JPanel allBtnPanel = new JPanel();
         allBtnPanel.add(refreshAllBtn);
         allBtnPanel.add(rentAllBtn);
+        allBtnPanel.add(reserveAllBtn); // 添加预约按钮
         allVehiclePanel.add(allBtnPanel, BorderLayout.SOUTH);
         allVehiclePanel.add(queryPanel, BorderLayout.NORTH);
 
@@ -141,6 +165,7 @@ public class CustomerFrame extends JFrame {
         JPanel availableBtnPanel = new JPanel();
         availableBtnPanel.add(refreshAvailableBtn);
         availableBtnPanel.add(rentAvailableBtn);
+        availableBtnPanel.add(reserveAvailableBtn); // 添加预约按钮
         availableVehiclePanel.add(availableBtnPanel, BorderLayout.SOUTH);
 
         // 我的订单面板
@@ -151,6 +176,8 @@ public class CustomerFrame extends JFrame {
         orderBtnPanel.add(refreshOrderBtn);
         orderBtnPanel.add(returnVehicleBtn);
         orderBtnPanel.add(payOrderBtn);
+        orderBtnPanel.add(cancelReserveBtn); // 添加取消预约按钮
+        orderBtnPanel.add(rentOrderBtn); // 添加租借订单按钮
         orderPanel.add(orderBtnPanel, BorderLayout.SOUTH);
 
         // 添加标签页
@@ -169,6 +196,7 @@ public class CustomerFrame extends JFrame {
             new MainFrame();
         });
         buttonPanel.add(logoutBtn);
+        buttonPanel.add(modifyInfoBtn); // 添加修改信息按钮
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
 
         add(mainPanel);
@@ -208,6 +236,83 @@ public class CustomerFrame extends JFrame {
         // 支付订单按钮事件
         payOrderBtn.addActionListener(e -> {
             payOrder();
+        });
+
+        // 修改信息按钮事件
+        modifyInfoBtn.addActionListener(e -> {
+            CustomerInfoModifyUtil modifyUtil = new CustomerInfoModifyUtil(connection, this, customer.getUserId());
+            modifyUtil.showModifyInfoDialog();
+        });
+
+        // 预约所有车辆按钮事件监听器
+        reserveAllBtn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                rentalService.reserveVehicle(allVehicleTable, customer.getUserId());
+                loadAllVehicles();
+                loadAvailableVehicles();
+                loadMyOrders();
+            }
+        });
+
+        // 预约可租赁车辆按钮事件监听器
+        reserveAvailableBtn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                rentalService.reserveVehicle(availableVehicleTable, customer.getUserId());
+                loadAllVehicles();
+                loadAvailableVehicles();
+                loadMyOrders();
+            }
+        });
+
+        // 取消预约按钮事件监听器
+        cancelReserveBtn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int selectedRow = orderTable.getSelectedRow();
+                if (selectedRow == -1) {
+                    JOptionPane.showMessageDialog(CustomerFrame.this, "请选择要取消预约的订单",
+                            "提示", JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+
+                String orderNo = orderTable.getValueAt(selectedRow, 0).toString();
+                boolean success = rentalService.cancelReserve(orderNo);
+                if (success) {
+                    loadMyOrders();
+                    loadAllVehicles();
+                    loadAvailableVehicles();
+                }
+            }
+        });
+
+        // 租借按钮事件监听器
+        rentOrderBtn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int selectedRow = orderTable.getSelectedRow();
+                if (selectedRow == -1) {
+                    JOptionPane.showMessageDialog(CustomerFrame.this, "请选择要租借的订单",
+                            "提示", JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+
+                String orderNo = orderTable.getValueAt(selectedRow, 0).toString();
+                String vehicleNo = orderTable.getValueAt(selectedRow, 2).toString();
+
+                boolean success = orderRentalService.rentOrder(orderNo, vehicleNo); // 通过实例调用 rentOrder 方法
+                if (success) {
+                    loadMyOrders();
+                    loadAllVehicles();
+                    loadAvailableVehicles();
+                    JOptionPane.showMessageDialog(CustomerFrame.this, "租借成功，订单号: " + orderNo,
+                            "成功", JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(CustomerFrame.this, "租借失败，请查看控制台日志",
+                            "错误", JOptionPane.ERROR_MESSAGE);
+                }
+            }
         });
     }
 

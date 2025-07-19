@@ -3,7 +3,6 @@ package view;
 
 import com.toedter.calendar.JDateChooser;
 import entity.Employee;
-
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -13,8 +12,19 @@ import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-
 import service.RentStatisticsService;
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartFrame;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.data.category.DefaultCategoryDataset;
+import java.util.Calendar;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.renderer.category.BarRenderer;
+import java.awt.Color;
+import java.awt.Dimension;
+
 
 public class EmployeeFrame extends JFrame {
     private Employee employee;
@@ -28,7 +38,7 @@ public class EmployeeFrame extends JFrame {
 
     public EmployeeFrame(Employee employee) {
         this.employee = employee;
-        setTitle("员工管理系统 - " + employee.getUserId());
+        setTitle("车辆租赁系统-员工系统 - " + employee.getUserId());
         setSize(900, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -45,7 +55,7 @@ public class EmployeeFrame extends JFrame {
             JPanel mainPanel = new JPanel(new BorderLayout());
 
             // 欢迎信息
-            JLabel welcomeLabel = new JLabel("欢迎 " + employee.getUserId() + " 进入员工管理系统！");
+            JLabel welcomeLabel = new JLabel("欢迎 " + employee.getUserId() + " 进入车辆租赁系统-员工系统！");
             welcomeLabel.setFont(new Font("宋体", Font.BOLD, 16));
             welcomeLabel.setHorizontalAlignment(JLabel.CENTER);
             welcomeLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
@@ -58,6 +68,7 @@ public class EmployeeFrame extends JFrame {
             tabbedPane.addTab("站点信息", createStationPanel());
             tabbedPane.addTab("客户信息", createCustomerPanel());
             tabbedPane.addTab("员工信息", createEmployeePanel());
+            tabbedPane.addTab("统计图表", createStatisticsPanel());
 
             mainPanel.add(tabbedPane, BorderLayout.CENTER);
 
@@ -174,7 +185,7 @@ public class EmployeeFrame extends JFrame {
         JButton queryBtn = new JButton("统计费用");
         
         // 为统计按钮添加图标
-        service.IconUtils.addIconToButton(queryBtn, "/view/刷新.png");
+        service.IconUtils.addIconToButton(queryBtn, "/view/统计.png");
         
         queryPanel.add(new JLabel("开始日期:"));
         queryPanel.add(startDateChooser);
@@ -405,4 +416,98 @@ public class EmployeeFrame extends JFrame {
             dispose();
         }
     }
+
+    // 统计图表面板
+    private JPanel createStatisticsPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        // 日期选择组件
+        JPanel datePanel = new JPanel();
+        JLabel dateLabel = new JLabel("选择月份:");
+        JDateChooser dateChooser = new JDateChooser();
+        dateChooser.setDateFormatString("yyyy-MM");
+        JButton showChartBtn = new JButton("显示统计图表");
+
+        datePanel.add(dateLabel);
+        datePanel.add(dateChooser);
+        datePanel.add(showChartBtn);
+        panel.add(datePanel, BorderLayout.NORTH);
+
+        // 图表显示面板
+        JPanel chartContainer = new JPanel(new BorderLayout());
+        chartContainer.setBorder(BorderFactory.createTitledBorder("租赁统计图表"));
+        panel.add(chartContainer, BorderLayout.CENTER);
+
+        // 按钮事件
+        showChartBtn.addActionListener(e -> {
+            Date selectedDate = dateChooser.getDate();
+            if (selectedDate == null) {
+                JOptionPane.showMessageDialog(this, "请选择月份", "提示", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(selectedDate);
+            int year = calendar.get(Calendar.YEAR);
+            int month = calendar.get(Calendar.MONTH) + 1;
+
+            try {
+                RentStatisticsService statsService = new RentStatisticsService(connection);
+                DefaultCategoryDataset dataset = statsService.getVehicleTypeRentalStats(year, month);
+
+                if (dataset.getRowCount() == 0) {
+                    JOptionPane.showMessageDialog(this, "该月份没有租赁数据", "提示", JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+
+                // 创建蓝色主题的柱状图
+                JFreeChart chart = ChartFactory.createBarChart(
+                        year + "年" + month + "月车辆类型租赁统计",
+                        "车辆类型",
+                        "租赁次数",
+                        dataset,
+                        PlotOrientation.VERTICAL,
+                        true, true, false
+                );
+
+                // 设置中文字体
+                chart.getTitle().setFont(new Font("SimSun", Font.BOLD, 18));
+                chart.getCategoryPlot().getDomainAxis().setLabelFont(new Font("SimSun", Font.PLAIN, 14));
+                chart.getCategoryPlot().getDomainAxis().setTickLabelFont(new Font("SimSun", Font.PLAIN, 12));
+                chart.getCategoryPlot().getRangeAxis().setLabelFont(new Font("SimSun", Font.PLAIN, 14));
+                chart.getCategoryPlot().getRangeAxis().setTickLabelFont(new Font("SimSun", Font.PLAIN, 12));
+                chart.getLegend().setItemFont(new Font("SimSun", Font.PLAIN, 12));
+
+                // 设置蓝色主题
+                CategoryPlot plot = chart.getCategoryPlot();
+                plot.setBackgroundPaint(Color.WHITE);
+                plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
+                plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
+
+                // 设置柱状图颜色为蓝色
+                BarRenderer renderer = (BarRenderer) plot.getRenderer();
+                renderer.setSeriesPaint(0, new Color(70, 130, 180)); // 钢蓝色
+                renderer.setShadowVisible(true);
+                renderer.setShadowPaint(Color.DARK_GRAY);
+
+                // 创建图表面板并添加到容器中
+                ChartPanel chartPanel = new ChartPanel(chart);
+                chartPanel.setPreferredSize(new Dimension(800, 400));
+
+                // 清除原有内容并添加新图表
+                chartContainer.removeAll();
+                chartContainer.add(chartPanel, BorderLayout.CENTER);
+                chartContainer.revalidate();
+                chartContainer.repaint();
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "生成图表失败: " + ex.getMessage(), "错误", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        return panel;
+    }
+
 }

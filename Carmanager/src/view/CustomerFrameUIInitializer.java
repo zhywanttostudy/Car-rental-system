@@ -38,7 +38,7 @@ public class CustomerFrameUIInitializer {
         JPanel mainPanel = new JPanel(new BorderLayout());
 
         // 欢迎信息
-        JLabel welcomeLabel = new JLabel("欢迎 " + customer.getUserId() + " 进入客户系统！");
+        JLabel welcomeLabel = new JLabel("欢迎 " + customer.getUserId() + " 进入车辆租赁系统-客户系统！");
         welcomeLabel.setFont(new Font("宋体", Font.BOLD, 16));
         welcomeLabel.setHorizontalAlignment(JLabel.CENTER);
         welcomeLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
