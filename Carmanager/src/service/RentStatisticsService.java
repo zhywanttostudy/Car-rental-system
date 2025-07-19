@@ -9,6 +9,8 @@ import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import org.jfree.data.category.DefaultCategoryDataset;
+
 
 import basis.Connect;
 import basis.DBUtil;
@@ -78,4 +80,45 @@ public class RentStatisticsService {
 
         return totalFee;
     }
+
+    // 获取指定月份各车辆类型的租赁次数
+    public DefaultCategoryDataset getVehicleTypeRentalStats(int year, int month) throws SQLException {
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+
+        // 查询SQL：统计每种车辆类型的租赁次数
+        String sql = "SELECT " +
+                "CASE " +
+                "   WHEN v.Vmodel LIKE '%轿车%' THEN '轿车' " +
+                "   WHEN v.Vmodel LIKE '%SUV%' THEN 'SUV' " +
+                "   WHEN v.Vmodel LIKE '%MPV%' THEN 'MPV' " +
+                "   ELSE '其他' " +
+                "END AS vehicle_type, " +
+                "COUNT(o.Ono) AS rental_count " +
+                "FROM orders o " +
+                "JOIN vehicle v ON o.Vno = v.Vno " +
+                "WHERE YEAR(o.Ostart) = ? AND MONTH(o.Ostart) = ? " +
+                "GROUP BY " +
+                "CASE " +
+                "   WHEN v.Vmodel LIKE '%轿车%' THEN '轿车' " +
+                "   WHEN v.Vmodel LIKE '%SUV%' THEN 'SUV' " +
+                "   WHEN v.Vmodel LIKE '%MPV%' THEN 'MPV' " +
+                "   ELSE '其他' " +
+                "END";
+
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, year);
+            pstmt.setInt(2, month);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    String vehicleType = rs.getString("vehicle_type");
+                    int rentalCount = rs.getInt("rental_count");
+                    dataset.addValue(rentalCount, "租赁次数", vehicleType);
+                }
+            }
+        }
+
+        return dataset;
+    }
+
 }
